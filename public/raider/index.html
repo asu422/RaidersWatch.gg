@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        position: relative;
+        color: #ece2d0;
+        background-color: #130918;
+      }
+
+      .page-bg {
+        position: fixed;
+        inset: 0;
+        height: 100vh;
+        background-image: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.45),
+            rgba(19, 9, 24, 0.9)
+          ),
+          url("../assets/backgrounds/RaidersWatchBackground.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+        padding: 24px;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      #chart-controls {
+        margin-top: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #month-label {
+        margin-left: auto;
+        font-weight: 600;
+      }
+
+      .chart-container {
+        position: relative;
+        background: #130918;
+        border: 1px solid rgba(236, 226, 208, 0.2);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      #legend {
+        margin-top: 8px;
+      }
+
+      .comments-container {
+        margin-top: 16px;
+        background: #130918;
+        border: 1px solid rgba(236, 226, 208, 0.2);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .comments-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .comments-actions {
+        display: inline-flex;
+        gap: 8px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(236, 226, 208, 0.25);
+        background: rgba(255, 255, 255, 0.05);
+        color: #ece2d0;
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      .chip.active {
+        background: rgba(236, 226, 208, 0.15);
+        border-color: rgba(236, 226, 208, 0.4);
+      }
+
+      .votes {
+        display: inline-flex;
+        gap: 12px;
+        align-items: center;
+        margin-top: 8px;
+      }
+
+      .vote-btn {
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1px solid #9a949f;
+        background: transparent;
+        color: #9a949f;
+        cursor: pointer;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .vote-btn:hover {
+        border-color: #ece2d0;
+        color: #ece2d0;
+      }
+
+      .vote-btn.voted {
+        background: #ece2d0;
+        color: #130918;
+        border-color: #ece2d0;
+      }
+
+      .vote-btn:disabled {
+        opacity: 1;
+        cursor: default;
+      }
+
+      .comment-item {
+        display: flex;
+        gap: 12px;
+      }
+
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        color: #ece2d0;
+        flex-shrink: 0;
+      }
+
+      .comment-body {
+        flex: 1;
+      }
+
+      .comment-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        font-size: 13px;
+        color: rgba(236, 226, 208, 0.8);
+      }
+
+      .comment-author {
+        font-weight: 700;
+        font-size: 15px;
+        color: #ece2d0;
+      }
+
+      #chart-tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: rgba(19, 9, 24, 0.95);
+        border: 1px solid rgba(236, 226, 208, 0.3);
+        border-radius: 6px;
+        padding: 8px 10px;
+        color: #ece2d0;
+        font-size: 12px;
+        display: none;
+        max-width: 220px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+      }
+
+      #chart-tooltip .label {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      #chart-tooltip .row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2px;
+      }
+
+      #chart-tooltip .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        margin-right: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-bg" aria-hidden="true"></div>
+    <main>
+      <p id="raider-id"></p>
+      <div class="chart-container">
+        <div id="chart-controls">
+          <button type="button" id="prev-range" aria-label="Previous range">←</button>
+          <label for="span-select">Range:</label>
+          <select id="span-select">
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+          </select>
+          <button type="button" id="next-range" aria-label="Next range">→</button>
+          <span id="month-label"></span>
+        </div>
+        <canvas id="report-chart" width="900" height="400" aria-label="Reports over time"></canvas>
+        <div id="legend" aria-label="Report reasons legend"></div>
+        <div id="chart-tooltip"></div>
+      </div>
+      <div class="comments-container">
+        <div class="comments-header">
+          <h3 id="comments-title">Comments</h3>
+          <div class="comments-actions">
+            <button type="button" class="chip active" data-sort="top">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M12 19V5" />
+                <path d="M5 12l7-7 7 7" />
+              </svg>
+              <span>Top</span>
+            </button>
+            <button type="button" class="chip" data-sort="recent">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 3" />
+              </svg>
+              <span>Recent</span>
+            </button>
+          </div>
+        </div>
+        <div id="comments-list">No comments yet.</div>
+      </div>
+    </main>
+    <script>
+      const pathParts = window.location.pathname.split("/").filter(Boolean);
+      const slugPath = pathParts.length > 1 ? pathParts[1] : "";
+      const decodedSlug = slugPath ? decodeURIComponent(slugPath) : "";
+      const target = document.getElementById("raider-id");
+      const commentsList = document.getElementById("comments-list");
+      const commentsTitle = document.getElementById("comments-title");
+      const commentSortButtons = document.querySelectorAll(".comments-actions .chip");
+      const tooltip = document.getElementById("chart-tooltip");
+      const prevRangeBtn = document.getElementById("prev-range");
+      const nextRangeBtn = document.getElementById("next-range");
+      const monthLabel = document.getElementById("month-label");
+
+      if (decodedSlug) {
+        const displayTag = decodedSlug.replace(/-(\d{4})$/, "#$1");
+        target.textContent = displayTag;
+      }
+
+      const ctx = document.getElementById("report-chart").getContext("2d");
+      const spanSelect = document.getElementById("span-select");
+      const legend = document.getElementById("legend");
+      const chartState = {
+        padding: { left: 60, right: 20, top: 20, bottom: 40 },
+        labels: [],
+        datasets: [],
+        points: [],
+      };
+      let currentOffset = 0;
+      let currentCommentSort = "top";
+      const VOTE_KEY_PREFIX = "rw-vote:";
+
+      function getStoredVote(id) {
+        return localStorage.getItem(`${VOTE_KEY_PREFIX}${id}`);
+      }
+
+      function storeVote(id, vote) {
+        localStorage.setItem(`${VOTE_KEY_PREFIX}${id}`, vote);
+      }
+
+      function updateNav() {
+        nextRangeBtn.disabled = currentOffset === 0;
+      }
+
+      function renderMessage(message) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = "rgba(236,226,208,0.7)";
+        ctx.font = "14px Inter, sans-serif";
+        ctx.fillText(message, 40, 40);
+      }
+
+      function renderChart(data, offset = 0) {
+        if (!data || !data.labels || !data.labels.length) {
+          renderMessage("No data yet.");
+          legend.innerHTML = "";
+          return;
+        }
+
+        const labels = data.labels;
+        const formattedLabels =
+          Array.isArray(data.displayLabels) && data.displayLabels.length === labels.length
+            ? data.displayLabels
+            : labels;
+        const datasets = Array.isArray(data.datasets) ? data.datasets : [];
+        const allValues = datasets.flatMap((d) => d.data || []);
+        const hasValues = allValues.some((v) => v > 0);
+        const maxY = Math.max(1, ...allValues, hasValues ? 0 : 1);
+
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        const padding = chartState.padding;
+        const chartWidth = ctx.canvas.width - padding.left - padding.right;
+        const chartHeight = ctx.canvas.height - padding.top - padding.bottom;
+
+        function xForIndex(idx) {
+          if (labels.length === 1) return padding.left + chartWidth / 2;
+          return padding.left + (idx / (labels.length - 1)) * chartWidth;
+        }
+
+        function yForValue(val) {
+          return (
+            padding.top +
+            chartHeight -
+            (val / maxY) * chartHeight
+          );
+        }
+
+        ctx.strokeStyle = "rgba(236,226,208,0.2)";
+        ctx.lineWidth = 1;
+        labels.forEach((_label, i) => {
+          const x = xForIndex(i);
+          ctx.beginPath();
+          ctx.moveTo(x, padding.top);
+          ctx.lineTo(x, padding.top + chartHeight);
+          ctx.stroke();
+        });
+
+        ctx.strokeStyle = "rgba(236,226,208,0.3)";
+        ctx.beginPath();
+        ctx.moveTo(padding.left, padding.top + chartHeight);
+        ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+        ctx.stroke();
+
+        ctx.fillStyle = "#ece2d0";
+        ctx.font = "12px Inter, sans-serif";
+        labels.forEach((label, i) => {
+          const x = xForIndex(i);
+          ctx.fillText(formattedLabels[i] || label, x - 14, padding.top + chartHeight + 16);
+        });
+
+        for (let y = 0; y <= maxY; y++) {
+          const yPos = yForValue(y);
+          ctx.fillText(String(y), padding.left - 24, yPos + 4);
+        }
+
+        legend.innerHTML = "";
+
+        chartState.labels = formattedLabels;
+        chartState.datasets = datasets;
+        chartState.points = [];
+
+        datasets.forEach((dataset, datasetIdx) => {
+          const color =
+            dataset.color ||
+            ["#ff6b6b", "#ffa94d", "#4dabf7", "#9775fa", "#51cf66", "#ffd43b"][datasetIdx % 6];
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          const points = (dataset.data || []).map((value, idx) => ({
+            x: xForIndex(idx),
+            y: yForValue(value),
+            value,
+            label: formattedLabels[idx] || labels[idx],
+            series: dataset.label || "Series",
+            color,
+          }));
+          chartState.points.push(points);
+
+          if (points.length === 1) {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[0].x, points[0].y);
+            ctx.stroke();
+          } else if (points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+              const prev = points[i - 1];
+              const curr = points[i];
+              const midX = (prev.x + curr.x) / 2;
+              const midY = (prev.y + curr.y) / 2;
+              ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+            }
+            const last = points[points.length - 1];
+            ctx.lineTo(last.x, last.y);
+            ctx.stroke();
+          }
+
+          const item = document.createElement("div");
+          item.style.display = "inline-flex";
+          item.style.alignItems = "center";
+          item.style.marginRight = "12px";
+
+          const swatch = document.createElement("span");
+          swatch.style.display = "inline-block";
+          swatch.style.width = "12px";
+          swatch.style.height = "12px";
+          swatch.style.marginRight = "6px";
+          swatch.style.backgroundColor = color;
+          swatch.style.borderRadius = "2px";
+
+          const label = document.createElement("span");
+          label.textContent = dataset.label || "Series";
+
+          item.appendChild(swatch);
+          item.appendChild(label);
+          legend.appendChild(item);
+        });
+
+        if (!hasValues) {
+          renderMessage("No reports in this period.");
+        }
+      }
+
+      async function loadStats(span, offset = 0) {
+        if (!slugPath) {
+          renderMessage("No raider specified.");
+          return;
+        }
+
+        try {
+          renderMessage("Loading...");
+          const response = await fetch(
+            `/api/raider/${encodeURIComponent(
+              slugPath
+            )}/stats?span=${span}&offset=${offset}&_ts=${Date.now()}`,
+            { cache: "no-store" }
+          );
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) {
+            renderMessage(payload?.error || "Failed to load data.");
+            return;
+          }
+          if (span === "month") {
+            const labelText =
+              payload?.rangeMonth ||
+              new Date().toLocaleString("en-US", {
+                month: "long",
+                timeZone: "UTC",
+              });
+            monthLabel.textContent = labelText || "Unknown";
+          } else {
+            monthLabel.textContent = "";
+          }
+          renderChart(payload, offset);
+        } catch (error) {
+          renderMessage("Failed to load data.");
+        }
+      }
+
+      spanSelect.addEventListener("change", (event) => {
+        const span = event.target.value || "week";
+        currentOffset = 0;
+        loadStats(span, currentOffset);
+        updateNav();
+      });
+
+      prevRangeBtn.addEventListener("click", () => {
+        currentOffset += 1;
+        loadStats(spanSelect.value || "week", currentOffset);
+        updateNav();
+      });
+
+      nextRangeBtn.addEventListener("click", () => {
+        if (currentOffset === 0) return;
+        currentOffset -= 1;
+        loadStats(spanSelect.value || "week", currentOffset);
+        updateNav();
+      });
+
+      function showTooltip(evt) {
+        if (!chartState.labels.length || !chartState.points.length) {
+          tooltip.style.display = "none";
+          return;
+        }
+
+        const rect = ctx.canvas.getBoundingClientRect();
+        const x = evt.clientX - rect.left;
+        const y = evt.clientY - rect.top;
+
+        const padding = chartState.padding;
+        const chartWidth = ctx.canvas.width - padding.left - padding.right;
+        const chartHeight = ctx.canvas.height - padding.top - padding.bottom;
+
+        if (
+          x < padding.left ||
+          x > padding.left + chartWidth ||
+          y < padding.top ||
+          y > padding.top + chartHeight
+        ) {
+          tooltip.style.display = "none";
+          return;
+        }
+
+        const xs = chartState.points[0]?.map((p) => p.x) || [];
+        if (!xs.length) {
+          tooltip.style.display = "none";
+          return;
+        }
+        let nearestIdx = 0;
+        let minDist = Math.abs(x - xs[0]);
+        for (let i = 1; i < xs.length; i++) {
+          const dist = Math.abs(x - xs[i]);
+          if (dist < minDist) {
+            minDist = dist;
+            nearestIdx = i;
+          }
+        }
+
+        const rows = [];
+        let labelText = chartState.labels[nearestIdx] || "";
+        chartState.points.forEach((seriesPoints, sIdx) => {
+          const point = seriesPoints[nearestIdx];
+          if (!point) return;
+          rows.push({
+            label: chartState.datasets[sIdx]?.label || "Series",
+            color: chartState.datasets[sIdx]?.color || point.color,
+            value: point.value,
+          });
+        });
+
+        if (!rows.length) {
+          tooltip.style.display = "none";
+          return;
+        }
+
+        tooltip.innerHTML = "";
+        const title = document.createElement("div");
+        title.className = "label";
+        title.textContent = labelText;
+        tooltip.appendChild(title);
+
+        rows.forEach((row) => {
+          const r = document.createElement("div");
+          r.className = "row";
+          const swatch = document.createElement("span");
+          swatch.className = "swatch";
+          swatch.style.backgroundColor = row.color;
+          const txt = document.createElement("span");
+          txt.textContent = `${row.label}: ${row.value}`;
+          r.appendChild(swatch);
+          r.appendChild(txt);
+          tooltip.appendChild(r);
+        });
+
+        tooltip.style.display = "block";
+        const tooltipRect = tooltip.getBoundingClientRect();
+        let left = x + 12;
+        let top = y + 12;
+        if (left + tooltipRect.width > rect.width) {
+          left = x - tooltipRect.width - 12;
+        }
+        if (top + tooltipRect.height > rect.height) {
+          top = y - tooltipRect.height - 12;
+        }
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+      }
+
+      function hideTooltip() {
+        tooltip.style.display = "none";
+      }
+
+      ctx.canvas.addEventListener("mousemove", showTooltip);
+      ctx.canvas.addEventListener("mouseleave", hideTooltip);
+
+      updateNav();
+      loadStats(spanSelect.value || "week", currentOffset);
+
+      let voting = false;
+      async function voteOnComment(id, vote, upBtn, downBtn) {
+        if (voting) return;
+        const prev = getStoredVote(id);
+        if (prev === vote) return;
+        voting = true;
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+        try {
+          const res = await fetch(
+            `/api/comments/${encodeURIComponent(id)}/vote?vote=${vote}&prev=${prev || ""}`,
+            { method: "POST" }
+          );
+          const data = await res.json().catch(() => ({}));
+          storeVote(id, vote);
+
+          const currentUp = parseInt(upBtn.dataset.count || "0", 10);
+          const currentDown = parseInt(downBtn.dataset.count || "0", 10);
+
+          const upCount =
+            typeof data.upvotes === "number"
+              ? data.upvotes
+              : currentUp + (vote === "up" ? 1 : 0) - (prev === "up" ? 1 : 0);
+          const downCount =
+            typeof data.downvotes === "number"
+              ? data.downvotes
+              : currentDown + (vote === "down" ? 1 : 0) - (prev === "down" ? 1 : 0);
+
+          upBtn.dataset.count = upCount;
+          downBtn.dataset.count = downCount;
+          upBtn.textContent = `▲ ${upCount}`;
+          downBtn.textContent = `▼ ${downCount}`;
+
+          upBtn.classList.toggle("voted", vote === "up");
+          downBtn.classList.toggle("voted", vote === "down");
+          upBtn.disabled = false;
+          downBtn.disabled = false;
+        } catch (err) {
+          upBtn.disabled = false;
+          downBtn.disabled = false;
+        } finally {
+          voting = false;
+        }
+      }
+
+      function timeAgo(dateString) {
+        const now = new Date();
+        const then = new Date(dateString);
+        const diffMs = now - then;
+        const diffMinutes = Math.floor(diffMs / 60000);
+        if (diffMinutes < 1) return "Just now";
+        if (diffMinutes < 60) return `${diffMinutes}m ago`;
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays === 1) return "Yesterday";
+        if (diffDays < 7) return `${diffDays} days ago`;
+        const diffWeeks = Math.floor(diffDays / 7);
+        if (diffWeeks === 1) return "1 week ago";
+        return `${diffWeeks} weeks ago`;
+      }
+
+      function renderComments(comments) {
+        commentsList.innerHTML = "";
+        const filtered = (comments || []).filter(
+          (item) => item.comment && String(item.comment).trim().length > 0
+        );
+        commentsTitle.textContent = `${filtered.length} Comments`;
+        if (filtered.length === 0) {
+          commentsList.textContent = "";
+          return;
+        }
+
+        filtered.forEach((item) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "comment-item";
+          wrapper.style.marginBottom = "14px";
+
+          const avatar = document.createElement("div");
+          avatar.className = "avatar";
+          avatar.textContent = (item.reason || "R").charAt(0).toUpperCase();
+
+          const body = document.createElement("div");
+          body.className = "comment-body";
+
+          const meta = document.createElement("div");
+          meta.className = "comment-meta";
+          const author = document.createElement("span");
+          author.className = "comment-author";
+          author.textContent = item.reason || "Report";
+          const time = document.createElement("span");
+          time.textContent = item.created_at ? timeAgo(item.created_at) : "";
+          meta.appendChild(author);
+          meta.appendChild(time);
+
+          const text = document.createElement("div");
+          text.style.marginTop = "6px";
+          text.textContent = item.comment;
+
+          const votes = document.createElement("div");
+          votes.className = "votes";
+          const upBtn = document.createElement("button");
+          upBtn.className = "vote-btn";
+          upBtn.dataset.count = item.upvotes ?? 0;
+          upBtn.textContent = `▲ ${item.upvotes ?? 0}`;
+          const downBtn = document.createElement("button");
+          downBtn.className = "vote-btn";
+          downBtn.dataset.count = item.downvotes ?? 0;
+          downBtn.textContent = `▼ ${item.downvotes ?? 0}`;
+          const storedVote = getStoredVote(item.id);
+          if (storedVote === "up") {
+            upBtn.classList.add("voted");
+          } else if (storedVote === "down") {
+            downBtn.classList.add("voted");
+          }
+          upBtn.addEventListener("click", () => voteOnComment(item.id, "up", upBtn, downBtn));
+          downBtn.addEventListener("click", () => voteOnComment(item.id, "down", upBtn, downBtn));
+          votes.appendChild(upBtn);
+          votes.appendChild(downBtn);
+
+          body.appendChild(meta);
+          body.appendChild(text);
+          body.appendChild(votes);
+
+          wrapper.appendChild(avatar);
+          wrapper.appendChild(body);
+          commentsList.appendChild(wrapper);
+        });
+      }
+
+      async function loadComments() {
+        if (!slugPath) {
+          commentsList.textContent = "No raider specified.";
+          return;
+        }
+        commentsList.textContent = "Loading comments...";
+        try {
+          const response = await fetch(
+            `/api/raider/${encodeURIComponent(
+              slugPath
+            )}/comments?limit=200&sort=${currentCommentSort}`
+          );
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) {
+            commentsList.textContent = payload?.error || "Failed to load comments.";
+            return;
+          }
+          renderComments(payload.comments);
+        } catch (error) {
+          commentsList.textContent = "Failed to load comments.";
+        }
+      }
+
+      loadComments();
+
+      commentSortButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          commentSortButtons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          currentCommentSort = btn.getAttribute("data-sort") || "top";
+          loadComments();
+        });
+      });
+    </script>
+  </body>
+</html>

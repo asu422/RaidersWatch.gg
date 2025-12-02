@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Raider</title>
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background-image: url("./assets/backgrounds/RaidersWatchBackground.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        position: relative;
+        color: #ece2d0;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Report Raider</h1>
+      <form id="report-form">
+        <label for="embark-id">Raider's Embark ID</label><br />
+        <input
+          id="embark-id"
+          name="embark-id"
+          type="text"
+          required
+          placeholder="username#1234"
+          pattern="^[A-Za-z0-9_-]+#\\d{4}$"
+          title="Use the format username#1234"
+        /><br /><br />
+
+        <label for="reason">Reason for Report</label><br />
+        <select id="reason" name="reason" required>
+          <option value="">Select a reason</option>
+          <option value="betrayal">Betrayal</option>
+          <option value="rat-tactics">Rat Tactics</option>
+          <option value="afk-griefing">AFK / Griefing</option>
+          <option value="verbal-abuse">Verbal Abuse / Hate Speech</option>
+          <option value="cheating-exploiting">Cheating / Exploiting</option>
+          <option value="offensive-name">Offensive or Innaproriate Name</option>
+        </select><br /><br />
+
+        <label for="comments">Comments</label><br />
+        <input id="comments" name="comments" type="text" /><br /><br />
+
+        <label for="evidence">Media</label
+        ><br />
+        <input
+          id="evidence"
+          name="evidence"
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/gif,video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+        /><br /><br />
+
+        <button type="submit">Submit Report</button>
+      </form>
+    </main>
+    <script>
+      function validateTag(value) {
+        return /^[A-Za-z0-9_-]+#\d{4}$/.test(value);
+      }
+
+      const form = document.getElementById("report-form");
+      const embarkInput = document.getElementById("embark-id");
+      const reasonSelect = document.getElementById("reason");
+      const commentsInput = document.getElementById("comments");
+      const evidenceInput = document.getElementById("evidence");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const tag = embarkInput.value.trim();
+        const reason = reasonSelect.value;
+        const comments = commentsInput.value.trim();
+        const evidenceFiles = Array.from(evidenceInput.files || []);
+
+        if (!validateTag(tag)) {
+          alert("Please use the format username#1234 for the Embark ID.");
+          return;
+        }
+
+        if (!reason) {
+          alert("Select a reason for the report.");
+          return;
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append("tag", tag);
+          formData.append("reason", reason);
+          formData.append("comments", comments);
+          if (evidenceFiles.length) {
+            evidenceFiles.forEach((file) => {
+              formData.append("evidence", file);
+            });
+          }
+
+          const response = await fetch("/api/report", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            alert(result.error || "Failed to submit report.");
+            return;
+          }
+
+          alert("Report submitted");
+          form.reset();
+        } catch (error) {
+          alert("Network error submitting report.");
+        }
+      });
+    </script>
+  </body>
+</html>
