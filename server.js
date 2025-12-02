@@ -95,6 +95,7 @@ function slugToTag(slug) {
   if (!match) return null;
   return `${match[1]}#${match[2]}`;
 }
+
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -158,12 +159,12 @@ app.get("/api/raider/:slug/stats", async (req, res) => {
       .eq("tag", normalizedTag)
       .single();
 
-    if (raiderError) {
-      if (raiderError.code === "PGRST116") {
-        return res.status(200).json({ totalReports: 0, reputationTier: "Friendly", score: 0 });
-      }
-      throw raiderError;
+  if (raiderError) {
+    if (raiderError.code === "PGRST116") {
+      return res.status(200).json({ comments: [] });
     }
+    throw raiderError;
+  }
 
     const { data: reports, error: reportsError } = await supabase
       .from("reports")
@@ -214,6 +215,7 @@ app.get("/api/raider/:slug/stats", async (req, res) => {
         timeZone: "UTC",
       });
     });
+
     if (offset === 0 && span !== "month" && displayLabels.length > 0) {
       displayLabels[displayLabels.length - 1] = "Today";
     }
@@ -273,7 +275,7 @@ app.get("/api/raider/:slug/comments", async (req, res) => {
 
     const { data: reports, error: reportsError } = await supabase
       .from("reports")
-      .select("id, comments, reason, created_at, evidence_urls, upvotes, downvotes, reporter_label")
+        .select("id, comments, reason, created_at, evidence_urls, upvotes, downvotes, reporter_label")
       .eq("raider_id", raider.id)
       .order(sort === "recent" ? "created_at" : "upvotes", {
         ascending: false,
@@ -509,7 +511,7 @@ app.get("/api/raider/:slug/summary", async (req, res) => {
 
     res.json({
       totalReports: rep.totalReports,
-      reputationTier: rep.totalReports === 0 ? "Friendly" : (rep.tier || "NR"),
+         reputationTier: rep.totalReports === 0 ? "Friendly" : (rep.tier || "NR"),
       score: rep.score,
     });
   } catch (error) {
@@ -535,7 +537,7 @@ app.post("/api/report", handleUpload, async (req, res) => {
   const evidenceFiles = Array.isArray(req.files) ? req.files : [];
 
   if (!tag || !TAG_REGEX.test(tag)) {
-    return res.status(400).json({ error: "Invalid tag. Use username#1234." });
+        return res.status(400).json({ error: "Invalid tag. Use username#1234." });
   }
 
   if (!reason || !ALLOWED_REASONS.has(reason)) {
@@ -600,6 +602,6 @@ app.post("/api/report", handleUpload, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`RaidersWatch listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`RaidersWatch listening on port ${PORT}`);
 });
