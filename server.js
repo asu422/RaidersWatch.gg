@@ -23,6 +23,7 @@ const ALLOWED_REASONS = new Set([
   "verbal-abuse",
   "cheating-exploiting",
   "offensive-name",
+  "comment",
 ]);
 const REASON_LABELS = {
   "betrayal": "Betrayal",
@@ -41,6 +42,52 @@ const REASON_COLORS = {
   "offensive-name": "#FDE800",
 };
 const LEADERBOARD_FETCH_LIMIT = 5000;
+const ID_WORDS = [
+  "Wasp",
+  "Hornet",
+  "Snitch",
+  "Tick",
+  "Pop",
+  "Fireball",
+  "Surveyor",
+  "Rollbot",
+  "Leaper",
+  "Bastion",
+  "Bombardier",
+  "Sentinel",
+];
+
+function calculateReputationTier(reports) {
+  const now = new Date();
+  let score = 0;
+
+  function getAgeDays(date) {
+    return Math.floor((now - new Date(date)) / (1000 * 60 * 60 * 24));
+  }
+
+  function weight(ageDays) {
+    if (ageDays <= 7) return 1.0; // fresh report
+    if (ageDays <= 30) return 0.5; // recent
+    return 0.2; // old report
+  }
+
+  for (const r of reports) {
+    const age = getAgeDays(r.created_at);
+    score += weight(age);
+  }
+
+  let tier = "Friendly";
+  if (score > 0 && score <= 1.5) tier = "Neutral";
+  else if (score > 1.5 && score <= 3) tier = "Suspicious";
+  else if (score > 3 && score <= 5) tier = "Hostile";
+  else if (score > 5) tier = "KOS";
+
+  return {
+    tier,
+    score: Number(score.toFixed(2)),
+    totalReports: reports.length,
+  };
+}
 
 function slugToTag(slug) {
   const decoded = decodeURIComponent(slug);
@@ -122,6 +169,7 @@ app.get("/api/raider/:slug/stats", async (req, res) => {
       .from("reports")
       .select("reason, created_at")
       .eq("raider_id", raider.id)
+      .neq("reason", "comment")
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
 
@@ -225,10 +273,10 @@ app.get("/api/raider/:slug/comments", async (req, res) => {
 
     const { data: reports, error: reportsError } = await supabase
       .from("reports")
-      .select("id, comments, reason, created_at, evidence_urls, upvotes, downvotes")
+      .select("id, comments, reason, created_at, evidence_urls, upvotes, downvotes, reporter_label")
       .eq("raider_id", raider.id)
       .order(sort === "recent" ? "created_at" : "upvotes", {
-        ascending: sort === "recent",
+        ascending: false,
         nullsFirst: false,
       })
       .limit(limit);
@@ -248,6 +296,7 @@ app.get("/api/raider/:slug/comments", async (req, res) => {
       score:
         (Number.isFinite(r.upvotes) ? r.upvotes : 0) -
         (Number.isFinite(r.downvotes) ? r.downvotes : 0),
+      reporter_label: r.reporter_label || null,
     }));
 
     res.json({ comments });
@@ -269,6 +318,7 @@ app.get("/api/leaderboard", async (req, res) => {
     const { data: rows, error } = await supabase
       .from("reports")
       .select("raider_id, raiders(tag)")
+      .neq("reason", "comment")
       .limit(LEADERBOARD_FETCH_LIMIT);
 
     if (error) {
@@ -368,6 +418,105 @@ app.post("/api/comments/:id/vote", async (req, res) => {
   }
 });
 
+app.post("/api/raider/:slug/comment", async (req, res) => {
+  if (!supabase) {
+    return res.status(500).json({ error: "Supabase is not configured." });
+  }
+
+  const slug = req.params.slug;
+  const tag = slugToTag(slug);
+  const { comment, reporter_label } = req.body || {};
+
+  if (!tag) {
+    return res.status(400).json({ error: "Invalid raider slug." });
+  }
+  if (!comment || !String(comment).trim()) {
+    return res.status(400).json({ error: "Comment is required." });
+  }
+
+  const normalizedTag = tag.toLowerCase();
+
+  try {
+    const { data: raider, error: raiderError } = await supabase
+      .from("raiders")
+      .select("id")
+      .eq("tag", normalizedTag)
+      .single();
+
+    if (raiderError) {
+      if (raiderError.code === "PGRST116") {
+        return res.status(404).json({ error: "Raider not found." });
+      }
+      throw raiderError;
+    }
+
+    const { error: insertError } = await supabase.from("reports").insert({
+      raider_id: raider.id,
+      reason: "comment",
+      comments: String(comment),
+      reporter_label: reporter_label || null,
+    });
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unexpected error" });
+  }
+});
+
+app.get("/api/raider/:slug/summary", async (req, res) => {
+  if (!supabase) {
+    return res.status(500).json({ error: "Supabase is not configured." });
+  }
+
+  const slug = req.params.slug;
+  const tag = slugToTag(slug);
+
+  if (!tag) {
+    return res.status(400).json({ error: "Invalid raider slug." });
+  }
+
+  const normalizedTag = tag.toLowerCase();
+
+  try {
+    const { data: raider, error: raiderError } = await supabase
+      .from("raiders")
+      .select("id")
+      .eq("tag", normalizedTag)
+      .single();
+
+    if (raiderError) {
+      if (raiderError.code === "PGRST116") {
+        return res.status(404).json({ error: "Raider not found." });
+      }
+      throw raiderError;
+    }
+
+    const { data: reports, error: reportsError } = await supabase
+      .from("reports")
+      .select("id, created_at")
+      .eq("raider_id", raider.id)
+      .neq("reason", "comment");
+
+    if (reportsError) {
+      throw reportsError;
+    }
+
+    const rep = calculateReputationTier(reports || []);
+
+    res.json({
+      totalReports: rep.totalReports,
+      reputationTier: rep.tier,
+      score: rep.score,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unexpected error" });
+  }
+});
+
 const handleUpload = (req, res, next) => {
   upload.array("evidence", 5)(req, res, (err) => {
     if (err) {
@@ -382,7 +531,7 @@ app.post("/api/report", handleUpload, async (req, res) => {
     return res.status(500).json({ error: "Supabase is not configured." });
   }
 
-  const { tag, reason, comments } = req.body || {};
+  const { tag, reason, comments, reporter_label } = req.body || {};
   const evidenceFiles = Array.isArray(req.files) ? req.files : [];
 
   if (!tag || !TAG_REGEX.test(tag)) {
@@ -438,6 +587,7 @@ app.post("/api/report", handleUpload, async (req, res) => {
       reason,
       comments: comments ? String(comments) : null,
       evidence_urls: evidenceUrls.length ? evidenceUrls : null,
+      reporter_label: reporter_label || null,
     });
 
     if (reportError) {

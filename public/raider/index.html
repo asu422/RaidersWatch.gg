@@ -47,8 +47,17 @@
         position: relative;
         z-index: 1;
         padding: 24px;
-        max-width: 960px;
+        max-width: 1080px;
         margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      #raider-id {
+        font-size: 32px;
+        font-weight: 800;
+        margin: 0;
       }
 
       #chart-controls {
@@ -76,12 +85,88 @@
         margin-top: 8px;
       }
 
+      .raider-header {
+        background: #130918;
+        border: 1px solid rgba(236, 226, 208, 0.2);
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .raider-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .reputation-badge {
+        width: 128px;
+        height: 128px;
+        border-radius: 10px;
+        border: 1px solid rgba(236, 226, 208, 0.3);
+        background: rgba(236, 226, 208, 0.08);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 18px;
+        color: #ece2d0;
+        text-transform: uppercase;
+      }
+
+      .raider-meta {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .meta-chip {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(236, 226, 208, 0.25);
+        background: rgba(255, 255, 255, 0.04);
+        font-weight: 700;
+        min-width: 140px;
+        text-align: center;
+      }
+
       .comments-container {
-        margin-top: 16px;
+        margin-top: 2px;
         background: #130918;
         border: 1px solid rgba(236, 226, 208, 0.2);
         border-radius: 8px;
         padding: 16px;
+      }
+
+      .comment-form {
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+
+      .comment-form textarea {
+        flex: 1;
+        min-height: 80px;
+        border-radius: 10px;
+        border: 1px solid rgba(236, 226, 208, 0.25);
+        background: rgba(255, 255, 255, 0.04);
+        color: #ece2d0;
+        padding: 10px;
+        resize: vertical;
+      }
+
+      .comment-form button {
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(236, 226, 208, 0.35);
+        background: rgba(236, 226, 208, 0.12);
+        color: #ece2d0;
+        cursor: pointer;
+        font-weight: 700;
       }
 
       .comments-header {
@@ -222,7 +307,15 @@
   <body>
     <div class="page-bg" aria-hidden="true"></div>
     <main>
-      <p id="raider-id"></p>
+      <div class="raider-header">
+        <div class="raider-info">
+          <div class="reputation-badge" id="reputation-badge">--</div>
+          <p id="raider-id"></p>
+        </div>
+        <div class="raider-meta">
+          <div class="meta-chip" id="total-reports-chip">Total Reports: --</div>
+        </div>
+      </div>
       <div class="chart-container">
         <div id="chart-controls">
           <button type="button" id="prev-range" aria-label="Previous range">←</button>
@@ -258,6 +351,15 @@
             </button>
           </div>
         </div>
+        <form id="comment-form" class="comment-form">
+          <textarea
+            id="comment-input"
+            name="comment"
+            placeholder="Add a comment..."
+            required
+          ></textarea>
+          <button type="submit">Post</button>
+        </form>
         <div id="comments-list">No comments yet.</div>
       </div>
     </main>
@@ -273,6 +375,58 @@
       const prevRangeBtn = document.getElementById("prev-range");
       const nextRangeBtn = document.getElementById("next-range");
       const monthLabel = document.getElementById("month-label");
+      const totalReportsChip = document.getElementById("total-reports-chip");
+      const reputationBadge = document.getElementById("reputation-badge");
+      const reasonLabels = {
+        betrayal: "Betrayal",
+        "rat-tactics": "Rat Tactics",
+        "afk-griefing": "AFK / Griefing",
+        "verbal-abuse": "Verbal Abuse / Hate Speech",
+        "cheating-exploiting": "Cheating / Exploiting",
+        "offensive-name": "Offensive or Innaproriate Name",
+        comment: "Comment",
+      };
+      const sessionIdKey = "rw-session-id";
+      const words = [
+        "Wasp",
+        "Hornet",
+        "Snitch",
+        "Tick",
+        "Pop",
+        "Fireball",
+        "Surveyor",
+        "Rollbot",
+        "Leaper",
+        "Bastion",
+        "Bombardier",
+        "Sentinel",
+      ];
+
+      function getSessionId() {
+        const existing = localStorage.getItem(sessionIdKey);
+        if (existing) return existing;
+        let candidate = "";
+        let attempts = 0;
+        while (!candidate && attempts < 20) {
+          const word = words[Math.floor(Math.random() * words.length)];
+          const suffix = String(Math.floor(10000 + Math.random() * 90000));
+          candidate = `${word}-${suffix}`;
+          attempts++;
+        }
+        const finalId = candidate || `Wasp-${Date.now() % 100000}`;
+        localStorage.setItem(sessionIdKey, finalId);
+        return finalId;
+      }
+      const sessionId = getSessionId();
+
+      function updateSummary(totalReports, reputationTier) {
+        if (totalReportsChip) {
+          totalReportsChip.textContent = `Total Reports: ${totalReports}`;
+        }
+        if (reputationBadge) {
+          reputationBadge.textContent = (reputationTier || "NR").slice(0, 3);
+        }
+      }
 
       if (decodedSlug) {
         const displayTag = decodedSlug.replace(/-(\d{4})$/, "#$1");
@@ -678,20 +832,23 @@
 
           const avatar = document.createElement("div");
           avatar.className = "avatar";
-          avatar.textContent = (item.reason || "R").charAt(0).toUpperCase();
+          const authorLabel = item.reporter_label || item.reason || "Report";
+          const reasonLabel = reasonLabels[item.reason] || item.reason || "Report";
+          avatar.textContent = authorLabel.charAt(0).toUpperCase();
 
           const body = document.createElement("div");
           body.className = "comment-body";
 
           const meta = document.createElement("div");
           meta.className = "comment-meta";
-          const author = document.createElement("span");
-          author.className = "comment-author";
-          author.textContent = item.reason || "Report";
-          const time = document.createElement("span");
-          time.textContent = item.created_at ? timeAgo(item.created_at) : "";
-          meta.appendChild(author);
-          meta.appendChild(time);
+          const metaText = document.createElement("span");
+          const timeText = item.created_at ? timeAgo(item.created_at) : "";
+          if (item.reason && item.reason !== "comment") {
+            metaText.textContent = `${authorLabel} · Reported for ${reasonLabel} · ${timeText}`;
+          } else {
+            metaText.textContent = `${authorLabel}${timeText ? " · " + timeText : ""}`;
+          }
+          meta.appendChild(metaText);
 
           const text = document.createElement("div");
           text.style.marginTop = "6px";
@@ -753,14 +910,67 @@
 
       loadComments();
 
-      commentSortButtons.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          commentSortButtons.forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          currentCommentSort = btn.getAttribute("data-sort") || "top";
+      const commentForm = document.getElementById("comment-form");
+      const commentInput = document.getElementById("comment-input");
+      if (commentForm && commentInput) {
+        commentForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const text = commentInput.value.trim();
+          if (!text) return;
+          try {
+            const res = await fetch(
+              `/api/raider/${encodeURIComponent(slugPath)}/comment`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  comment: text,
+                  reporter_label: sessionId,
+                }),
+              }
+            );
+            if (!res.ok) {
+              alert("Failed to post comment");
+              return;
+            }
+            commentInput.value = "";
           loadComments();
-        });
+        } catch (err) {
+          alert("Failed to post comment");
+        }
       });
+    }
+
+    commentSortButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        commentSortButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentCommentSort = btn.getAttribute("data-sort") || "top";
+        loadComments();
+      });
+    });
+
+    async function loadSummary() {
+      if (!slugPath) {
+        updateSummary(0, "Unrated");
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/raider/${encodeURIComponent(slugPath)}/summary`
+        );
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data) {
+          updateSummary(0, "Unrated");
+          return;
+        }
+        updateSummary(data.totalReports || 0, data.reputationTier || "Unrated");
+      } catch (err) {
+        updateSummary(0, "Unrated");
+      }
+      }
+
+      loadSummary();
     </script>
   </body>
 </html>
