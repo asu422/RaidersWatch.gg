@@ -24,6 +24,7 @@
         --muted: rgba(236, 226, 208, 0.7);
         --card: rgba(19, 9, 24, 0.9);
         --border: rgba(236, 226, 208, 0.25);
+        --error: #d9534f;
       }
 
       body {
@@ -140,6 +141,19 @@
         color: var(--muted);
       }
 
+      .alert {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        border: 1px solid var(--error);
+        background: rgba(217, 83, 79, 0.12);
+        color: var(--text);
+        padding: 8px 12px;
+        border-radius: 10px;
+        display: none;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+      }
+
       .cta-button:hover {
         transform: translateY(-1px);
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
@@ -222,6 +236,7 @@
       <div class="hero">
         <h1 class="title">Raiders Watch</h1>
         <p class="subtitle">Track and report raiders by Embark ID</p>
+        <div id="search-alert" class="alert"></div>
         <form id="search-form" class="search-shell">
           <input
             id="search"
@@ -282,6 +297,20 @@
         return /^[A-Za-z0-9_-]+#\d{4}$/.test(value);
       }
 
+      const searchAlert = document.getElementById("search-alert");
+
+      function showSearchAlert(message) {
+        if (!searchAlert) return;
+        searchAlert.textContent = message;
+        searchAlert.style.display = "block";
+      }
+
+      function clearSearchAlert() {
+        if (!searchAlert) return;
+        searchAlert.textContent = "";
+        searchAlert.style.display = "none";
+      }
+
       function handleFormSubmit(formId, inputId, action, onValid) {
         const form = document.getElementById(formId);
         const input = document.getElementById(inputId);
@@ -290,8 +319,10 @@
           event.preventDefault();
           const tag = input.value.trim();
 
+          clearSearchAlert();
+
           if (!validateTag(tag)) {
-            alert("Please use the format username#1234");
+            showSearchAlert("Invalid Embark ID");
             return;
           }
 

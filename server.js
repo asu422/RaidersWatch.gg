@@ -160,7 +160,7 @@ app.get("/api/raider/:slug/stats", async (req, res) => {
 
     if (raiderError) {
       if (raiderError.code === "PGRST116") {
-        return res.status(404).json({ error: "Raider not found." });
+        return res.status(200).json({ totalReports: 0, reputationTier: "Friendly", score: 0 });
       }
       throw raiderError;
     }
@@ -266,7 +266,7 @@ app.get("/api/raider/:slug/comments", async (req, res) => {
 
     if (raiderError) {
       if (raiderError.code === "PGRST116") {
-        return res.status(404).json({ error: "Raider not found." });
+        return res.status(200).json({ labels: [], datasets: [], span, offset, displayLabels: [] });
       }
       throw raiderError;
     }
@@ -445,7 +445,7 @@ app.post("/api/raider/:slug/comment", async (req, res) => {
 
     if (raiderError) {
       if (raiderError.code === "PGRST116") {
-        return res.status(404).json({ error: "Raider not found." });
+        return res.status(200).json({ comments: [] });
       }
       throw raiderError;
     }
@@ -509,7 +509,7 @@ app.get("/api/raider/:slug/summary", async (req, res) => {
 
     res.json({
       totalReports: rep.totalReports,
-      reputationTier: rep.tier,
+      reputationTier: rep.totalReports === 0 ? "Friendly" : (rep.tier || "NR"),
       score: rep.score,
     });
   } catch (error) {

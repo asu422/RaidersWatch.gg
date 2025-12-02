@@ -106,7 +106,7 @@
         width: 128px;
         height: 128px;
         border-radius: 10px;
-        border: 1px solid rgba(236, 226, 208, 0.3);
+        border: 4px solid rgba(236, 226, 208, 0.3);
         background: rgba(236, 226, 208, 0.08);
         display: grid;
         place-items: center;
@@ -114,6 +114,10 @@
         font-size: 18px;
         color: #ece2d0;
         text-transform: uppercase;
+        background-size: cover;
+        background-position: center;
+        overflow: hidden;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
       }
 
       .raider-meta {
@@ -271,6 +275,23 @@
         color: #ece2d0;
       }
 
+      .evidence-list {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .evidence-list img,
+      .evidence-list video {
+        max-width: 220px;
+        max-height: 140px;
+        border-radius: 6px;
+        border: 1px solid rgba(236, 226, 208, 0.2);
+        object-fit: cover;
+        background: rgba(0, 0, 0, 0.2);
+      }
+
       #chart-tooltip {
         position: absolute;
         pointer-events: none;
@@ -419,12 +440,47 @@
       }
       const sessionId = getSessionId();
 
+      const badgeImages = {
+        Friendly: "../assets/reputation/friendly.png",
+        Neutral: "../assets/reputation/neutral.png",
+        Suspicious: "../assets/reputation/suspicious.png",
+        Hostile: "../assets/reputation/hostile.png",
+        KOS: "../assets/reputation/kos.png",
+      };
+      const badgeOverlays = {
+        Friendly: "rgba(46, 204, 113, 0.35)", // green
+        Neutral: "rgba(244, 208, 63, 0.35)",  // yellow
+        Suspicious: "rgba(243, 156, 18, 0.35)", // orange
+        Hostile: "rgba(231, 76, 60, 0.35)", // red
+        KOS: "rgba(139, 0, 0, 0.45)", // dark red
+      };
+      const badgeBorders = {
+        Friendly: "rgb(46, 204, 113)",
+        Neutral: "rgb(244, 208, 63)",
+        Suspicious: "rgb(243, 156, 18)",
+        Hostile: "rgb(231, 76, 60)",
+        KOS: "rgb(139, 0, 0)",
+      };
+
       function updateSummary(totalReports, reputationTier) {
         if (totalReportsChip) {
           totalReportsChip.textContent = `Total Reports: ${totalReports}`;
         }
         if (reputationBadge) {
-          reputationBadge.textContent = (reputationTier || "NR").slice(0, 3);
+          const tierValue = reputationTier || "NR";
+          reputationBadge.textContent = tierValue.slice(0, 3);
+          const img = badgeImages[reputationTier];
+          const overlay = badgeOverlays[reputationTier] || "rgba(236, 226, 208, 0.08)";
+          const borderColor = badgeBorders[reputationTier] || "rgba(236, 226, 208, 0.3)";
+          if (img) {
+            reputationBadge.style.backgroundImage = `linear-gradient(${overlay}, ${overlay}), url('${img}')`;
+            reputationBadge.style.backgroundColor = "transparent";
+          } else {
+            reputationBadge.style.backgroundImage = `linear-gradient(${overlay}, ${overlay})`;
+            reputationBadge.style.backgroundColor = "transparent";
+          }
+          reputationBadge.style.borderColor = borderColor;
+          reputationBadge.style.color = borderColor;
         }
       }
 
@@ -461,13 +517,13 @@
       function renderMessage(message) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         ctx.fillStyle = "rgba(236,226,208,0.7)";
-        ctx.font = "14px Inter, sans-serif";
+        ctx.font = "22px Inter, sans-serif";
         ctx.fillText(message, 40, 40);
       }
 
       function renderChart(data, offset = 0) {
         if (!data || !data.labels || !data.labels.length) {
-          renderMessage("No data yet.");
+          renderMessage("No reports yet.");
           legend.innerHTML = "";
           return;
         }
@@ -854,6 +910,25 @@
           text.style.marginTop = "6px";
           text.textContent = item.comment;
 
+          const media = document.createElement("div");
+          media.className = "evidence-list";
+          if (Array.isArray(item.evidence_urls)) {
+            item.evidence_urls.forEach((url) => {
+              const lower = (url || "").toLowerCase();
+              if (lower.match(/\.(png|jpe?g|gif|webp)$/)) {
+                const img = document.createElement("img");
+                img.src = url;
+                img.alt = "evidence";
+                media.appendChild(img);
+              } else if (lower.match(/\.(mp4|mov|webm|avi|mkv)$/)) {
+                const vid = document.createElement("video");
+                vid.src = url;
+                vid.controls = true;
+                media.appendChild(vid);
+              }
+            });
+          }
+
           const votes = document.createElement("div");
           votes.className = "votes";
           const upBtn = document.createElement("button");
@@ -877,6 +952,9 @@
 
           body.appendChild(meta);
           body.appendChild(text);
+          if (media.childElementCount > 0) {
+            body.appendChild(media);
+          }
           body.appendChild(votes);
 
           wrapper.appendChild(avatar);
@@ -964,11 +1042,15 @@
           updateSummary(0, "Unrated");
           return;
         }
-        updateSummary(data.totalReports || 0, data.reputationTier || "Unrated");
+        const tier =
+          data.totalReports === 0
+            ? "Friendly"
+            : data.reputationTier ?? "NR";
+        updateSummary(data.totalReports ?? 0, tier);
       } catch (err) {
-        updateSummary(0, "Unrated");
+        updateSummary(0, "NR");
       }
-      }
+    }
 
       loadSummary();
     </script>
