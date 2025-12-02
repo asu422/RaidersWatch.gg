@@ -76,16 +76,16 @@ function calculateReputationTier(reports) {
     score += weight(age);
   }
 
-  let tier = "Friendly";
-  if (score > 0 && score <= 1.5) tier = "Neutral";
-  else if (score > 1.5 && score <= 3) tier = "Suspicious";
-  else if (score > 3 && score <= 5) tier = "Hostile";
-  else if (score > 5) tier = "KOS";
+  const total = reports.length;
+  let tier = "Neutral";
+  if (total >= 3 && total <= 5) tier = "Suspicious";
+  else if (total >= 6 && total <= 10) tier = "Hostile";
+  else if (total > 10) tier = "KOS";
 
   return {
     tier,
     score: Number(score.toFixed(2)),
-    totalReports: reports.length,
+    totalReports: total,
   };
 }
 
@@ -312,7 +312,7 @@ app.get("/api/leaderboard", async (req, res) => {
     return res.status(500).json({ error: "Supabase is not configured." });
   }
 
-  const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 10, 25));
+  const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 10, 10));
 
   try {
     const { data: rows, error } = await supabase

@@ -95,6 +95,28 @@
         align-items: center;
         gap: 16px;
       }
+      .back-row {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 8px;
+      }
+
+      .back-btn {
+        border: 1px solid rgba(236, 226, 208, 0.25);
+        background: rgba(255, 255, 255, 0.06);
+        color: #ece2d0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
 
       .raider-info {
         display: flex;
@@ -150,6 +172,7 @@
         display: flex;
         gap: 8px;
         align-items: flex-start;
+        margin-bottom: 12px;
       }
 
       .comment-form textarea {
@@ -242,6 +265,7 @@
       .comment-item {
         display: flex;
         gap: 12px;
+        margin-bottom: 14px;
       }
 
       .avatar {
@@ -258,6 +282,10 @@
 
       .comment-body {
         flex: 1;
+      }
+
+      #comments-list > .comment-item:first-of-type {
+        margin-top: 6px;
       }
 
       .comment-meta {
@@ -328,6 +356,11 @@
   <body>
     <div class="page-bg" aria-hidden="true"></div>
     <main>
+      <div class="back-row">
+        <button type="button" class="back-btn" onclick="window.location.href='/'">
+          ← Back
+        </button>
+      </div>
       <div class="raider-header">
         <div class="raider-info">
           <div class="reputation-badge" id="reputation-badge">--</div>
@@ -452,14 +485,14 @@
         Neutral: "rgba(244, 208, 63, 0.35)",  // yellow
         Suspicious: "rgba(243, 156, 18, 0.35)", // orange
         Hostile: "rgba(231, 76, 60, 0.35)", // red
-        KOS: "rgba(139, 0, 0, 0.45)", // dark red
+        KOS: "rgba(100, 0, 0, 0.55)", // darker red
       };
       const badgeBorders = {
         Friendly: "rgb(46, 204, 113)",
         Neutral: "rgb(244, 208, 63)",
         Suspicious: "rgb(243, 156, 18)",
         Hostile: "rgb(231, 76, 60)",
-        KOS: "rgb(139, 0, 0)",
+        KOS: "rgb(100, 0, 0)",
       };
 
       function updateSummary(totalReports, reputationTier) {
@@ -468,7 +501,7 @@
         }
         if (reputationBadge) {
           const tierValue = reputationTier || "NR";
-          reputationBadge.textContent = tierValue.slice(0, 3);
+          reputationBadge.textContent = tierValue;
           const img = badgeImages[reputationTier];
           const overlay = badgeOverlays[reputationTier] || "rgba(236, 226, 208, 0.08)";
           const borderColor = badgeBorders[reputationTier] || "rgba(236, 226, 208, 0.3)";

@@ -282,7 +282,7 @@
           <span>Report a Raider</span>
         </button>
         <section class="leaderboard">
-          <h3>Most Wanted Raiders</h3>
+          <h3>Top 10 Most Wanted Raiders</h3>
           <ul id="leaderboard-list" class="leaderboard-list">
             <li class="leaderboard-item">
               <span class="tag">Loading...</span>
@@ -360,9 +360,13 @@
             const li = document.createElement("li");
             li.className = "leaderboard-item";
 
-            const tagSpan = document.createElement("span");
+            const tagSpan = document.createElement("a");
             tagSpan.className = "tag";
             tagSpan.textContent = item.tag;
+            tagSpan.href = `raider/${encodeURIComponent(item.tag.replace("#", "-"))}`;
+            tagSpan.style.color = "inherit";
+            tagSpan.style.textDecoration = "none";
+            tagSpan.style.fontWeight = "700";
 
             const countSpan = document.createElement("span");
             countSpan.className = "count";

@@ -90,6 +90,29 @@
         gap: 12px;
       }
 
+      .back-row {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 8px;
+      }
+
+      .back-btn {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
       .alert {
         border: 1px solid var(--error);
         background: rgba(217, 83, 79, 0.12);
@@ -112,17 +135,27 @@
 
       input[type="text"],
       select,
-      input[type="file"] {
+      input[type="file"],
+      textarea {
         width: 100%;
         padding: 10px 12px;
         border: 1px solid var(--border);
         border-radius: 10px;
         background: rgba(255, 255, 255, 0.04);
         color: var(--text);
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
       }
 
-      input[type="text"]::placeholder {
+      input[type="text"]::placeholder,
+      textarea::placeholder {
         color: var(--muted);
+        font-size: 14px
+      }
+
+      textarea {
+        min-height: 100px;
+        resize: none;
+        line-height: 1.4;
       }
 
       button {
@@ -149,6 +182,11 @@
     <div class="page-bg" aria-hidden="true"></div>
     <main>
       <div class="card">
+        <div class="back-row">
+          <button type="button" class="back-btn" onclick="window.location.href='/'">
+            ← Back
+          </button>
+        </div>
         <h1>Report Raider</h1>
         <p class="subtitle">Flag a raider by Embark ID and include any evidence.</p>
         <div id="form-alert" class="alert"></div>
@@ -181,7 +219,7 @@
 
           <div class="field">
             <label for="comments">Comments (Optional)</label>
-            <input id="comments" name="comments" type="text" />
+            <textarea id="comments" name="comments" placeholder="Add a comment..."></textarea>
           </div>
 
           <div class="field">
