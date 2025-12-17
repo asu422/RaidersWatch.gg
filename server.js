@@ -57,6 +57,38 @@ const ID_WORDS = [
   "Sentinel",
 ];
 
+async function findRaiderByTag(tag) {
+  if (!supabase) return null;
+  const lookup = tag.toLowerCase();
+  const { data, error } = await supabase
+    .from("raiders")
+    .select("id, tag")
+    .ilike("tag", lookup)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    throw error;
+  }
+  return data || null;
+}
+
+async function ensureRaider(tag) {
+  if (!supabase) return null;
+  const existing = await findRaiderByTag(tag);
+  if (existing) return existing;
+
+  const { data, error } = await supabase
+    .from("raiders")
+    .insert({ tag })
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+  return data;
+}
+
 function calculateReputationTier(reports) {
   const now = new Date();
   let score = 0;
@@ -141,8 +173,6 @@ app.get("/api/raider/:slug/stats", async (req, res) => {
     return res.status(400).json({ error: "Invalid raider slug." });
   }
 
-  const normalizedTag = tag.toLowerCase();
-
   const spanDays = span === "month" ? 30 : 7;
   const endDate = new Date();
   endDate.setUTCHours(23, 59, 59, 999);
@@ -153,18 +183,10 @@ app.get("/api/raider/:slug/stats", async (req, res) => {
   startDate.setUTCDate(startDate.getUTCDate() - (spanDays - 1));
 
   try {
-    const { data: raider, error: raiderError } = await supabase
-      .from("raiders")
-      .select("id")
-      .eq("tag", normalizedTag)
-      .single();
-
-  if (raiderError) {
-    if (raiderError.code === "PGRST116") {
-      return res.status(200).json({ comments: [] });
+    const raider = await findRaiderByTag(tag);
+    if (!raider) {
+      return res.status(200).json({ labels: [], datasets: [], span, offset, displayLabels: [] });
     }
-    throw raiderError;
-  }
 
     const { data: reports, error: reportsError } = await supabase
       .from("reports")
@@ -257,20 +279,10 @@ app.get("/api/raider/:slug/comments", async (req, res) => {
     return res.status(400).json({ error: "Invalid raider slug." });
   }
 
-  const normalizedTag = tag.toLowerCase();
-
   try {
-    const { data: raider, error: raiderError } = await supabase
-      .from("raiders")
-      .select("id")
-      .eq("tag", normalizedTag)
-      .single();
-
-    if (raiderError) {
-      if (raiderError.code === "PGRST116") {
-        return res.status(200).json({ labels: [], datasets: [], span, offset, displayLabels: [] });
-      }
-      throw raiderError;
+    const raider = await findRaiderByTag(tag);
+    if (!raider) {
+      return res.status(200).json({ labels: [], datasets: [], span, offset, displayLabels: [] });
     }
 
     const { data: reports, error: reportsError } = await supabase
@@ -436,20 +448,10 @@ app.post("/api/raider/:slug/comment", async (req, res) => {
     return res.status(400).json({ error: "Comment is required." });
   }
 
-  const normalizedTag = tag.toLowerCase();
-
   try {
-    const { data: raider, error: raiderError } = await supabase
-      .from("raiders")
-      .select("id")
-      .eq("tag", normalizedTag)
-      .single();
-
-    if (raiderError) {
-      if (raiderError.code === "PGRST116") {
-        return res.status(200).json({ comments: [] });
-      }
-      throw raiderError;
+    const raider = await findRaiderByTag(tag);
+    if (!raider) {
+      return res.status(200).json({ comments: [] });
     }
 
     const { error: insertError } = await supabase.from("reports").insert({
@@ -481,20 +483,10 @@ app.get("/api/raider/:slug/summary", async (req, res) => {
     return res.status(400).json({ error: "Invalid raider slug." });
   }
 
-  const normalizedTag = tag.toLowerCase();
-
   try {
-    const { data: raider, error: raiderError } = await supabase
-      .from("raiders")
-      .select("id")
-      .eq("tag", normalizedTag)
-      .single();
-
-    if (raiderError) {
-      if (raiderError.code === "PGRST116") {
-        return res.status(404).json({ error: "Raider not found." });
-      }
-      throw raiderError;
+    const raider = await findRaiderByTag(tag);
+    if (!raider) {
+      return res.status(404).json({ error: "Raider not found." });
     }
 
     const { data: reports, error: reportsError } = await supabase
@@ -544,18 +536,8 @@ app.post("/api/report", handleUpload, async (req, res) => {
     return res.status(400).json({ error: "Invalid report reason." });
   }
 
-  const normalizedTag = tag.toLowerCase();
-
   try {
-    const { data: raider, error: raiderError } = await supabase
-      .from("raiders")
-      .upsert({ tag: normalizedTag }, { onConflict: "tag" })
-      .select()
-      .single();
-
-    if (raiderError) {
-      throw raiderError;
-    }
+    const raider = await ensureRaider(tag);
 
     const evidenceUrls = [];
 
